@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MELODY MUSIC | 音乐播放器</title>
+    <link rel="icon" href="sign.png" type="image/png">
+    <link rel="icon" href="sign.png" type="image/png" sizes="16x16">
+    <link rel="icon" href="sign.png" type="image/png" sizes="32x32">
+    <link rel="apple-touch-icon" href="sign.png">
+    <!-- 引入APlayer和MetingJS实现网易云音乐集成 -->
+    <link rel="stylesheet" href="https://cdn.bootcdn.net/ajax/libs/aplayer/1.10.1/APlayer.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700&family=Exo+2:wght@300;400;600&display=swap" rel="stylesheet">
+    <script src="https://cdn.bootcdn.net/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <script src="https://cdn.bootcdn.net/ajax/libs/aplayer/1.10.1/APlayer.min.js"></script>
+    <script src="https://cdn.bootcdn.net/ajax/libs/meting/2.0.1/Meting.min.js"></script>
+    <style>
+        :root {
+            --primary: #00e4ff;
+            --secondary: #7b61ff;
+            --dark: #0a0e17;
+            --darker: #060913;
+            --light: #e0f7ff;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            background: linear-gradient(135deg, var(--darker), var(--dark));
+            color: var(--light);
+            font-family: 'Exo 2', sans-serif;
+            min-height: 100vh;
+            overflow-x: hidden;
+            line-height: 1.6;
+        }
+        
+        /* 科技感背景效果 */
+        .tech-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            overflow: hidden;
+        }
+        
+        .grid-line {
+            position: absolute;
+            background: rgba(0, 228, 255, 0.05);
+        }
+        
+        .grid-horizontal {
+            width: 100%;
+            height: 1px;
+            top: 0;
+            animation: gridMove 120s linear infinite;
+        }
+        
+        .grid-vertical {
+            width: 1px;
+            height: 100%;
+            left: 0;
+            animation: gridMove 80s linear infinite;
+        }
+        
+        @keyframes gridMove {
+            to { transform: translateY(-1000px) translateX(-500px); }
+        }
+        
+        /* 头部样式 */
+        header {
+            text-align: center;
+            padding: 2rem 1rem;
+            position: relative;
+            z-index: 10;
+        }
+        
+        h1 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 3.5rem;
+            margin-bottom: 1.5rem;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            background: linear-gradient(to right, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 0 15px rgba(0, 228, 255, 0.3);
+            position: relative;
+        }
+        
+        h1::after {
+            content: '';
+            position: absolute;
+            bottom: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 200px;
+            height: 3px;
+            background: linear-gradient(to right, var(--primary), var(--secondary));
+            border-radius: 3px;
+        }
+        
+        .tagline {
+            font-size: 1.2rem;
+            opacity: 0.8;
+            margin-bottom: 2rem;
+        }
+        
+        /* 搜索区域 */
+        .search-container {
+            max-width: 700px;
+            margin: 0 auto 3rem;
+            position: relative;
+        }
+        
+        .search-box {
+            display: flex;
+            background: rgba(10, 15, 30, 0.6);
+            border: 1px solid rgba(0, 228, 255, 0.2);
+            border-radius: 50px;
+            overflow: hidden;
+            box-shadow: 0 0 20px rgba(0, 100, 255, 0.1);
+            transition: all 0.3s ease;
+            position: relative;
+        }
+        
+        .search-box:focus-within {
+            border-color: var(--primary);
+            box-shadow: 0 0 30px rgba(0, 228, 255, 0.3);
+            transform: translateY(-2px);
+        }
+        
+        .search-box::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(45deg, rgba(0, 228, 255, 0.1), rgba(123, 97, 255, 0.1));
+            z-index: -1;
+            border-radius: 50px;
+        }
+        
+        #search-input {
+            flex: 1;
+            padding: 18px 25px;
+            font-size: 1.1rem;
+            background: transparent;
+            border: none;
+            color: var(--light);
+            outline: none;
+        }
+        
+        #search-input::placeholder {
+            color: rgba(224, 247, 255, 0.5);
+        }
+        
+        #search-button {
+            padding: 0 30px;
+            background: linear-gradient(45deg, var(--primary), var(--secondary));
+            border: none;
+            color: var(--darker);
+            font-family: 'Orbitron', sans-serif;
+            font-weight: 600;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            letter-spacing: 1px;
+        }
+        
+        #search-button:hover {
+            background: linear-gradient(45deg, #00c4e0, #6a50e0);
+            box-shadow: 0 0 15px rgba(0, 228, 255, 0.4);
+        }
+        
+        /* 播放器容器 */
+        .player-container {
+            max-width: 900px;
+            margin: 0 auto 3rem;
+            background: rgba(10, 15, 30, 0.4);
+            border: 1px solid rgba(0, 228, 255, 0.15);
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(10px);
+            position: relative;
+        }
+        
+        .player-container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: radial-gradient(circle at top right, rgba(0, 228, 255, 0.05), transparent 70%);
+            z-index: -1;
+        }
+        
+        .player-header {
+            padding: 20px;
+            text-align: center;
+            background: rgba(0, 0, 0, 0.2);
+            border-bottom: 1px solid rgba(0, 228, 255, 0.1);
+        }
+        
+        .player-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.4rem;
+            color: var(--primary);
+            letter-spacing: 1px;
+        }
+        
+        /* 自定义播放器样式 */
+        .aplayer {
+            background: transparent;
+            margin: 0;
+            font-family: 'Exo 2', sans-serif;
+            color: var(--light);
+            box-shadow: none;
+        }
+        
+        .aplayer-info {
+            background: rgba(0, 0, 0, 0.2);
+            padding: 15px 20px;
+        }
+        
+        .aplayer-music {
+            color: var(--light);
+        }
+        
+        .aplayer-title {
+            color: var(--primary);
+            font-size: 1.2rem;
+        }
+        
+        .aplayer-author {
+            color: rgba(224, 247, 255, 0.8);
+        }
+        
+        .aplayer-controller .aplayer-bar-wrap {
+            margin: 0 15px;
+        }
+        
+        .aplayer-bar {
+            background: rgba(224, 247, 255, 0.2);
+            height: 4px;
+        }
+        
+        .aplayer-loaded {
+            background: rgba(0, 228, 255, 0.2);
+            height: 4px;
+        }
+        
+        .aplayer-played {
+            background: linear-gradient(to right, var(--primary), var(--secondary));
+            height: 4px;
+        }
+        
+        .aplayer-thumb {
+            background: var(--light);
+            border: 2px solid var(--primary);
+            box-shadow: 0 0 10px var(--primary);
+        }
+        
+        .aplayer-time {
+            color: rgba(224, 247, 255, 0.7);
+        }
+        
+        .aplayer-icon {
+            width: 18px;
+            height: 18px;
+        }
+        
+        .aplayer-icon path {
+            fill: var(--primary);
+        }
+        
+        .aplayer-list {
+            border-top: 1px solid rgba(0, 228, 255, 0.1);
+            background: rgba(0, 0, 0, 0.15);
+        }
+        
+        .aplayer-list ol li {
+            border-top: 1px solid rgba(0, 228, 255, 0.05);
+            padding: 12px 20px;
+            transition: all 0.2s ease;
+        }
+        
+        .aplayer-list ol li:hover {
+            background: rgba(0, 228, 255, 0.05);
+        }
+        
+        .aplayer-list-light {
+            background: rgba(0, 228, 255, 0.1);
+        }
+        
+        .aplayer-list-index {
+            color: var(--primary);
+        }
+        
+        .aplayer-list-title {
+            color: var(--light);
+        }
+        
+        .aplayer-list-author {
+            color: rgba(224, 247, 255, 0.6);
+        }
+        
+        /* 浮动效果 */
+        .floating {
+            animation: float 6s ease-in-out infinite;
+        }
+        
+        @keyframes float {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-15px); }
+            100% { transform: translateY(0px); }
+        }
+        
+        /* 响应式设计 */
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 2.5rem;
+            }
+            
+            .search-box {
+                flex-direction: column;
+                border-radius: 15px;
+            }
+            
+            #search-input {
+                padding: 15px;
+            }
+            
+            #search-button {
+                padding: 15px;
+                border-radius: 0 0 15px 15px;
+            }
+            
+            .player-container {
+                margin: 0 15px 3rem;
+            }
+        }
+        
+        footer {
+            text-align: center;
+            padding: 2rem;
+            font-size: 0.9rem;
+            color: rgba(224, 247, 255, 0.6);
+        }
+        
+        .highlight {
+            color: var(--primary);
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <!-- 科技感背景网格 -->
+    <div class="tech-bg">
+        <div class="grid-line grid-horizontal"></div>
+        <div class="grid-line grid-horizontal" style="top: 100px;"></div>
+        <div class="grid-line grid-horizontal" style="top: 200px;"></div>
+        <div class="grid-line grid-horizontal" style="top: 300px;"></div>
+        <div class="grid-line grid-horizontal" style="top: 400px;"></div>
+        <div class="grid-line grid-horizontal" style="top: 500px;"></div>
+        <div class="grid-line grid-horizontal" style="top: 600px;"></div>
+        <div class="grid-line grid-horizontal" style="top: 700px;"></div>
+        <div class="grid-line grid-horizontal" style="top: 800px;"></div>
+        <div class="grid-line grid-horizontal" style="top: 900px;"></div>
+        
+        <div class="grid-line grid-vertical"></div>
+        <div class="grid-line grid-vertical" style="left: 100px;"></div>
+        <div class="grid-line grid-vertical" style="left: 200px;"></div>
+        <div class="grid-line grid-vertical" style="left: 300px;"></div>
+        <div class="grid-line grid-vertical" style="left: 400px;"></div>
+        <div class="grid-line grid-vertical" style="left: 500px;"></div>
+        <div class="grid-line grid-vertical" style="left: 600px;"></div>
+        <div class="grid-line grid-vertical" style="left: 700px;"></div>
+        <div class="grid-line grid-vertical" style="left: 800px;"></div>
+        <div class="grid-line grid-vertical" style="left: 900px;"></div>
+    </div>
+
+    <header>
+        <h1 class="floating">MELODY MUSIC</h1>
+        <p class="tagline">探索无限音乐宇宙 · 沉浸科技视听体验</p>
+        
+        <div class="search-container">
+            <div class="search-box">
+                <input type="text" id="search-input" placeholder="输入歌曲名、歌手或专辑...">
+                <button id="search-button">搜索音乐</button>
+            </div>
+        </div>
+    </header>
+    
+    <main>
+        <div class="player-container">
+            <div class="player-header">
+                <div class="player-title">网易云音乐在线播放器</div>
+            </div>
+            <!-- MetingJS播放器 -->
+            <meting-js
+                id="defaultPlayer"
+                server="netease"
+                type="playlist"
+                id="3778678"
+                theme="#00e4ff"
+                fixed="false"
+                loop="all"
+                order="random"
+                preload="auto"
+                volume="0.7"
+                list-folded="true"
+                list-max-height="500px"
+                storage-name="melody-player"
+            ></meting-js>
+        </div>
+    </main>
+    
+    <footer>
+        <p>Powered by <span class="highlight">网易云音乐API</span> · 数据来自网易云音乐 · 仅供学习交流使用 单击≡可下拉畅听其他歌曲</p>
+        <p>© 2025 MELODY MUSIC | 探索科技与音乐的完美融合</p>
+    </footer>
+
+    <script>
+        $(document).ready(function() {
+            // 搜索功能
+            $('#search-button').click(function() {
+                const keyword = $('#search-input').val().trim();
+                if (keyword) {
+                    // 移除旧播放器
+                    $('meting-js').remove();
+                    
+                    // 创建新播放器
+                    const newPlayer = $('<meting-js>').attr({
+                        server: "netease",
+                        type: "search",
+                        id: keyword,
+                        theme: "#00e4ff",
+                        fixed: "false",
+                        loop: "all",
+                        order: "random",
+                        preload: "auto",
+                        volume: "0.7",
+                        "list-folded": "true",
+                        "list-max-height": "500px",
+                        "storage-name": "melody-player"
+                    });
+                    
+                    $('.player-container').append(newPlayer);
+                    
+                    // 添加搜索提示
+                    $('.player-title').html(`搜索结果: "${keyword}"`);
+                }
+            });
+            
+            // 回车键搜索
+            $('#search-input').keypress(function(e) {
+                if (e.which === 13) {
+                    $('#search-button').click();
+                }
+            });
+            
+            // 添加网格动画
+            $('.grid-line').each(function(index) {
+                $(this).css({
+                    animationDelay: (index * 0.5) + 's'
+                });
+            });
+        });
+    </script>
+</body>
+</html>
